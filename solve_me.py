@@ -18,7 +18,8 @@ class TasksCommand:
     def read_completed(self):
         try:
             file = open(self.COMPLETED_TASKS_FILE, "r")
-            self.completed_items = file.readlines()
+            # self.completed_items = file.readlines() #Replacing this line with the line below to avoid empty lines
+            self.completed_items = [line.replace("\n","") for line in file.readlines() if line.strip()]
             file.close()
         except Exception:
             pass
@@ -63,16 +64,59 @@ $ python tasks.py report # Statistics"""
         )
 
     def add(self, args):
-        pass
+        if int(args[0]) > 0:
+            self.recursive_add(args)
+            print(f"Added task: \"{' '.join(args[1:])}\" with priority {args[0]}")
+    
+    def recursive_add(self, args):
+        task = TasksCommand()
+        task.read_current()
+        if int(args[0]) in task.current_items:
+            self.recursive_add([int(args[0])+1, task.current_items[int(args[0])]])
+        task.current_items[int(args[0])] = " ".join(args[1:])
+        task.write_current()
+        return
 
     def done(self, args):
-        pass
+        task = TasksCommand()
+        task.read_current()
+        deleted_item = task.current_items.pop(int(args[0]), None)
+        if not deleted_item:
+            print(f"Error: no incomplete item with priority {args[0]} exists.")
+            return
+        task.read_completed()
+        task.completed_items.append(deleted_item)
+        task.write_completed()
+        task.write_current()
+        print("̉Marked item as done.")
 
     def delete(self, args):
-        pass
+        task = TasksCommand()
+        task.read_current()
+        deleted_item = task.current_items.pop(int(args[0]), None)
+        if deleted_item:
+            print(f"Deleted item with priority {args[0]}")
+        else:
+            print(f"Error: item with priority {args[0]} does not exist. Nothing deleted.")
+        task.write_current()
 
     def ls(self):
-        pass
+        task = TasksCommand()
+        task.read_current()
+        for i, (priority, value) in enumerate(task.current_items.items(), start = 1):
+            print(f"{i}. {value} [{priority}]")
+
+    def ls_completed(self):
+        task = TasksCommand()
+        task.read_completed()
+        for i, value in enumerate(task.completed_items, start = 1):
+            print(f"{i}. {value}")
 
     def report(self):
-        pass
+        task = TasksCommand()
+        task.read_current()
+        print(f"Pending : {len(task.current_items)}")
+        self.ls()
+        task.read_completed()
+        print(f"\nCompleted : {len(task.completed_items)}")
+        self.ls_completed()
